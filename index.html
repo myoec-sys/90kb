@@ -1,0 +1,1689 @@
+```html
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>MYOEC // VIBECODE — Telegram Ecosystem Architecture</title>
+  <meta name="description" content="Разработка высоконагруженных Telegram-ботов, Mini Apps (TMA) и веб-сервисов премиального уровня." />
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Anime.js via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            obsidian: {
+              DEFAULT: '#070709',
+              50: '#1b1b22',
+              100: '#15151c',
+              200: '#101016',
+              300: '#0c0c11',
+              400: '#09090d',
+              base: '#070709'
+            },
+            accent: {
+              white: '#ffffff',
+              muted: '#8e8ea0',
+              cyan: '#38bdf8',
+              emerald: '#10b981'
+            }
+          },
+          borderRadius: {
+            '2xl': '20px',
+            '3xl': '28px',
+            '4xl': '36px',
+            'full': '9999px',
+          },
+          boxShadow: {
+            'glow-sm': '0 0 15px -3px rgba(255, 255, 255, 0.18)',
+            'glow-md': '0 0 30px -5px rgba(255, 255, 255, 0.22)',
+            'glow-neon': '0 0 50px rgba(255, 255, 255, 0.35)',
+            'glow-cyan': '0 0 35px -5px rgba(56, 189, 248, 0.3)'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Базовые стили и строгий запрет горизонтального скролла */
+    html, body {
+      background-color: #070709;
+      color: #f3f4f6;
+      overflow-x: hidden;
+      touch-action: pan-y;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Фоновая сетка Graphite */
+    .bg-grid-graphite {
+      background-size: 38px 38px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    }
+
+    /* Фоновые радиальные градиенты */
+    .radial-ambient {
+      background: radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.07) 0%, rgba(56, 189, 248, 0.035) 40%, transparent 75%);
+    }
+
+    /* Премиальное матовое стекло */
+    .glass-panel {
+      background: rgba(16, 16, 22, 0.72);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 28px;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .glass-panel:hover {
+      border-color: rgba(255, 255, 255, 0.22);
+      box-shadow: 0 12px 35px -10px rgba(0, 0, 0, 0.6), 0 0 25px rgba(255, 255, 255, 0.04);
+    }
+
+    /* 3D-контейнер для интерактивного тилта */
+    .prism-viewport {
+      perspective: 950px;
+      transform-style: preserve-3d;
+    }
+    .prism-tilt-object {
+      transform-style: preserve-3d;
+      will-change: transform;
+      transition: transform 0.15s cubic-bezier(0.2, 0, 0.2, 1);
+    }
+
+    /* Бегущие импульсы данных */
+    .data-pulse-track {
+      stroke-dasharray: 40 180;
+      stroke-dashoffset: 0;
+      filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.9));
+    }
+
+    /* Холст световых всплесков касания (Ripple Canvas) */
+    #touch-fx-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* Скрытие стандартного скроллбара */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #070709;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Стили аккордеона FAQ */
+    .faq-answer {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+    }
+    .faq-item.active .faq-answer {
+      max-height: 280px;
+      opacity: 1;
+    }
+    .faq-item.active {
+      border-color: rgba(255, 255, 255, 0.3);
+      background: rgba(22, 22, 30, 0.85);
+      box-shadow: 0 0 25px rgba(255, 255, 255, 0.06);
+    }
+    .faq-item.active .faq-icon-wrapper {
+      transform: rotate(45deg);
+      background-color: #ffffff;
+      color: #070709;
+    }
+
+    /* Акцентная подсветка выбранного пункта в калькуляторе */
+    .radio-card-highlight {
+      border-color: #ffffff !important;
+      background: rgba(255, 255, 255, 0.14) !important;
+      box-shadow: 0 0 25px rgba(255, 255, 255, 0.25) !important;
+    }
+
+    .calc-highlight {
+      box-shadow: 0 0 45px rgba(255, 255, 255, 0.35) !important;
+      border-color: rgba(255, 255, 255, 0.6) !important;
+    }
+
+    .scroll-reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      will-change: opacity, transform;
+    }
+  </style>
+</head>
+<body class="bg-obsidian font-sans antialiased text-gray-200 min-h-screen relative selection:bg-white selection:text-black">
+
+  <!-- Холст для квантовых световых кругов при тапе/клике -->
+  <canvas id="touch-fx-canvas"></canvas>
+
+  <!-- Ambient Фоновый свет -->
+  <div class="fixed inset-0 bg-grid-graphite pointer-events-none z-0"></div>
+  <div class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[640px] radial-ambient pointer-events-none z-0"></div>
+
+  <!-- ВЕРХНИЙ TICKER / СТАТУС-БАР -->
+  <div class="relative z-50 border-b border-white/5 bg-obsidian-300/80 backdrop-blur-md text-[11px] font-mono py-2 px-4 text-center text-gray-400 flex items-center justify-center gap-3">
+    <span class="inline-flex items-center gap-1.5 text-accent-emerald">
+      <span class="w-1.5 h-1.5 rounded-full bg-accent-emerald animate-ping"></span>
+      Свободен для 1 проекта • Доступный прайс до 3 000 ₽
+    </span>
+    <span class="hidden md:inline text-white/20">•</span>
+    <span class="hidden md:inline">aiogram 3.x / Telegram WebApps / FastAPI</span>
+    <span class="text-white/20">•</span>
+    <a href="https://t.me/myoec" target="_blank" rel="noopener" class="interactive-btn text-white hover:underline flex items-center gap-1">
+      Заказать (@myoec) <span class="text-xs">→</span>
+    </a>
+  </div>
+
+  <!-- ШАПКА САЙТА (NAVBAR) -->
+  <header class="sticky top-0 z-40 border-b border-white/[0.07] bg-obsidian-base/85 backdrop-blur-xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      
+      <!-- Логотип -->
+      <a href="https://myoec-sys.github.io/" class="flex items-center gap-3 group interactive-btn">
+        <div class="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center font-mono font-bold text-xs tracking-wider text-white group-hover:border-white/40 group-hover:scale-105 transition-all">
+          MO
+        </div>
+        <div class="flex flex-col">
+          <span class="font-bold tracking-tight text-white text-sm sm:text-base flex items-center gap-1.5">
+            MYOEC <span class="text-white/30 font-normal">/</span> VIBECODE
+          </span>
+          <span class="text-[10px] font-mono text-gray-400 tracking-widest uppercase">System Engineering</span>
+        </div>
+      </a>
+
+      <!-- Десктоп Меню -->
+      <nav class="hidden md:flex items-center gap-7 text-xs font-medium text-gray-400">
+        <a href="#services" class="hover:text-white transition-colors">Инженерные решения</a>
+        <a href="#code-lab" class="hover:text-white transition-colors">Архитектура</a>
+        <a href="#calculator" class="hover:text-white transition-colors">Калькулятор сметы</a>
+        <a href="#portfolio" class="hover:text-white transition-colors">Кейсы</a>
+        <a href="#faq" class="hover:text-white transition-colors">FAQ</a>
+      </nav>
+
+      <!-- Кнопки в шапке -->
+      <div class="flex items-center gap-3">
+        <a href="https://t.me/vibecodeh" target="_blank" rel="noopener" class="interactive-btn hidden sm:flex items-center gap-1.5 text-xs font-mono px-4 py-2 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:border-white/30 transition-all">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent-cyan animate-pulse"></span>
+          @vibecodeh
+        </a>
+        <a href="https://t.me/myoec" target="_blank" rel="noopener" class="interactive-btn px-5 py-2.5 rounded-full bg-white text-black font-semibold text-xs tracking-tight hover:bg-gray-200 transition-all active:scale-95 shadow-glow-sm flex items-center gap-1.5">
+          <span>Связаться</span>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <!-- Мобильная кнопка меню -->
+        <button id="mobile-menu-btn" class="interactive-btn md:hidden p-2.5 rounded-2xl bg-white/5 border border-white/10 text-gray-300">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Мобильное выпадающее меню -->
+    <div id="mobile-menu" class="hidden md:hidden border-b border-white/10 bg-obsidian-200/95 backdrop-blur-2xl px-6 py-6 flex flex-col gap-4 text-sm font-medium rounded-b-3xl">
+      <a href="#services" class="mobile-nav-link text-gray-300 hover:text-white">Инженерные решения</a>
+      <a href="#code-lab" class="mobile-nav-link text-gray-300 hover:text-white">Код & Производительность</a>
+      <a href="#calculator" class="mobile-nav-link text-gray-300 hover:text-white">Онлайн Калькулятор (до 3 000 ₽)</a>
+      <a href="#portfolio" class="mobile-nav-link text-gray-300 hover:text-white">Портфолио проектов</a>
+      <a href="#faq" class="mobile-nav-link text-gray-300 hover:text-white">Вопросы и ответы</a>
+      <div class="pt-4 border-t border-white/10 flex flex-col gap-2.5">
+        <a href="https://t.me/vibecodeh" target="_blank" rel="noopener" class="interactive-btn text-xs font-mono text-accent-cyan flex items-center justify-between p-2 rounded-xl bg-white/5">
+          Канал: @vibecodeh <span>↗</span>
+        </a>
+        <a href="https://myoec-sys.github.io/" target="_blank" rel="noopener" class="interactive-btn text-xs font-mono text-gray-400 flex items-center justify-between p-2 rounded-xl bg-white/5">
+          GitHub Pages <span>↗</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ГЛАВНЫЙ ЭКРАН (HERO SECTION) -->
+  <section class="relative z-10 pt-12 pb-20 md:pt-20 md:pb-32 px-4 sm:px-6 max-w-7xl mx-auto">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+      
+      <!-- Текстовый левый блок -->
+      <div class="lg:col-span-7 flex flex-col items-start text-left hero-text-block">
+        
+        <!-- Welcome Бейдж -->
+        <div id="hero-floating-badge" class="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/[0.05] border border-white/10 text-xs font-mono text-gray-300 mb-6 backdrop-blur-md">
+          <span class="flex h-2 w-2 relative">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+          </span>
+          <span class="text-gray-400">WELCOME</span>
+          <span class="text-white/20">|</span>
+          <span class="text-white font-medium">NEXT-GEN BOT & TMA LAB</span>
+        </div>
+
+        <!-- Главный заголовок -->
+        <h1 class="hero-anim-item text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.08] mb-6">
+          The next generation <br class="hidden sm:inline" />
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-gray-400">
+            of Telegram code.
+          </span>
+        </h1>
+
+        <!-- Лид-текст -->
+        <p class="hero-anim-item text-base sm:text-lg text-gray-400 max-w-xl mb-9 leading-relaxed font-normal">
+          Проектирую и разрабатываю высокоскоростные Telegram-боты на <strong class="text-white font-semibold">aiogram 3</strong>, 
+          нативные Mini Apps (TMA) и веб-интерфейсы. Доступная разработка под ключ — честные цены до 3 000 ₽.
+        </p>
+
+        <!-- CTA Кнопки -->
+        <div class="hero-anim-item w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 mb-10">
+          <a href="https://t.me/myoec?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5!%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%BE%D0%B1%D1%81%D1%83%D0%B4%D0%B8%D1%82%D1%8C%20%D1%80%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D1%83%20%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82%D0%B0" 
+             target="_blank" rel="noopener"
+             class="interactive-btn px-8 py-4 rounded-full bg-white text-black font-bold text-sm tracking-tight hover:bg-gray-100 transition-all active:scale-95 shadow-glow-sm text-center flex items-center justify-center gap-2 group">
+            <span>Начать проект (@myoec)</span>
+            <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          
+          <button data-calc-service="bot"
+             class="service-calc-btn interactive-btn px-7 py-4 rounded-full bg-white/5 border border-white/10 hover:border-white/30 text-white font-medium text-sm transition-all text-center flex items-center justify-center gap-2">
+            <span>Рассчитать смету в калькуляторе</span>
+            <span class="text-xs text-gray-400">↓</span>
+          </button>
+        </div>
+
+        <!-- Метрики качества -->
+        <div class="hero-anim-item pt-6 border-t border-white/[0.08] w-full grid grid-cols-3 gap-3 sm:gap-4 max-w-lg font-mono text-left">
+          <div class="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
+            <div class="text-lg sm:text-2xl font-bold text-white tracking-tight">1-3 дня</div>
+            <div class="text-[10px] sm:text-[11px] text-gray-400 uppercase tracking-wider">MVP запуск</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
+            <div class="text-lg sm:text-2xl font-bold text-white tracking-tight">&lt; 35ms</div>
+            <div class="text-[10px] sm:text-[11px] text-gray-400 uppercase tracking-wider">Отклик ядра</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
+            <div class="text-lg sm:text-2xl font-bold text-white tracking-tight">≤ 3 000 ₽</div>
+            <div class="text-[10px] sm:text-[11px] text-gray-400 uppercase tracking-wider">Макс. прайс</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Правый блок: КВАНТОВАЯ ПРИЗМА И СИНХРОНИЗИРОВАННАЯ СФЕРА -->
+      <div class="lg:col-span-5 flex justify-center items-center relative">
+        
+        <div id="hero-prism-zone" class="prism-viewport w-full max-w-[420px] aspect-square flex items-center justify-center relative select-none cursor-pointer">
+          
+          <div id="grid-warp-glow" class="absolute inset-0 rounded-full bg-radial from-white/[0.09] via-transparent to-transparent blur-2xl pointer-events-none transform transition-transform duration-700"></div>
+          <div id="quantum-flash" class="absolute w-28 h-28 rounded-full bg-white opacity-0 blur-xl pointer-events-none z-20"></div>
+
+          <div id="prism-tilt-element" class="prism-tilt-object relative w-full h-full flex items-center justify-center">
+
+            <svg id="quantum-prism-svg" viewBox="0 0 500 500" class="w-full h-full overflow-visible z-10">
+              <defs>
+                <filter id="prism-white-glow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="7" result="blur1" />
+                  <feGaussianBlur stdDeviation="15" result="blur2" />
+                  <feMerge>
+                    <feMergeNode in="blur2" />
+                    <feMergeNode in="blur1" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                <linearGradient id="orbit-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95" />
+                  <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.75" />
+                  <stop offset="100%" stop-color="#ffffff" stop-opacity="0.1" />
+                </linearGradient>
+              </defs>
+
+              <polygon id="ring-6" class="prism-polygon" 
+                points="250,30 440,140 440,360 250,470 60,360 60,140"
+                fill="none" stroke="#ffffff" stroke-width="0.9" stroke-opacity="0.22" />
+
+              <polygon id="ring-5" class="prism-polygon" 
+                points="250,65 410,157 410,343 250,435 90,343 90,157"
+                fill="none" stroke="#ffffff" stroke-width="1.1" stroke-opacity="0.32" />
+
+              <polygon id="ring-4" class="prism-polygon" 
+                points="250,105 375,177 375,323 250,395 125,323 125,177"
+                fill="none" stroke="#ffffff" stroke-width="1.2" stroke-opacity="0.45" />
+              <polygon id="data-pulse-ring-4" class="data-pulse-track" 
+                points="250,105 375,177 375,323 250,395 125,323 125,177"
+                fill="none" stroke="url(#orbit-grad)" stroke-width="2.6" />
+
+              <polygon id="ring-3" class="prism-polygon" 
+                points="250,145 340,197 340,303 250,355 160,303 160,197"
+                fill="none" stroke="#ffffff" stroke-width="1.4" stroke-opacity="0.6" filter="url(#prism-white-glow)" />
+
+              <polygon id="ring-2" class="prism-polygon" 
+                points="250,185 305,217 305,283 250,315 195,283 195,217"
+                fill="none" stroke="#ffffff" stroke-width="1.6" stroke-opacity="0.75" />
+              <polygon id="data-pulse-ring-2" class="data-pulse-track" 
+                points="250,185 305,217 305,283 250,315 195,283 195,217"
+                fill="none" stroke="#ffffff" stroke-width="2.8" />
+
+              <polygon id="ring-1" class="prism-polygon" 
+                points="250,215 280,232 280,268 250,285 220,268 220,232"
+                fill="none" stroke="#ffffff" stroke-width="2" stroke-opacity="0.9" filter="url(#prism-white-glow)" />
+
+              <circle id="manual-shockwave" cx="250" cy="250" r="10" stroke="#ffffff" stroke-width="3" fill="none" opacity="0" transform-origin="250 250" />
+
+              <g id="quantum-core-group" transform="translate(250, 250)">
+                <circle id="core-glow-aura" r="32" fill="#ffffff" opacity="0.18" filter="url(#prism-white-glow)" />
+                <circle id="core-main-orb" r="14" fill="#ffffff" opacity="0.95" filter="url(#prism-white-glow)" />
+                <circle id="core-bright-center" r="5" fill="#ffffff" />
+              </g>
+            </svg>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- СТЕК ТЕХНОЛОГИЙ & ПАРТНЕРСКИЕ ПРОТОКОЛЫ -->
+  <section class="border-y border-white/[0.07] bg-obsidian-200/50 py-7 relative z-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+      <p class="text-center font-mono text-[11px] uppercase tracking-widest text-gray-400 mb-5">
+        Production-Ready стек и поддерживаемые интерфейсы
+      </p>
+      <div class="flex flex-wrap items-center justify-center gap-7 sm:gap-12 opacity-85 text-xs font-mono">
+        <div class="flex items-center gap-2 text-white">
+          <span class="w-2 h-2 rounded-full bg-blue-500"></span> Python 3.12+
+        </div>
+        <div class="flex items-center gap-2 text-white">
+          <span class="w-2 h-2 rounded-full bg-green-500"></span> aiogram 3.15+
+        </div>
+        <div class="flex items-center gap-2 text-white">
+          <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Telegram Mini Apps
+        </div>
+        <div class="flex items-center gap-2 text-white">
+          <span class="w-2 h-2 rounded-full bg-indigo-500"></span> PostgreSQL & Redis
+        </div>
+        <div class="flex items-center gap-2 text-white">
+          <span class="w-2 h-2 rounded-full bg-sky-400"></span> Docker / CI/CD
+        </div>
+        <div class="flex items-center gap-2 text-white">
+          <span class="w-2 h-2 rounded-full bg-purple-400"></span> OpenAI / Claude API
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- БЛОК УСЛУГ (ИНЖЕНЕРНЫЕ РЕШЕНИЯ) С ЦЕНАМИ ДО 3 000 Р И ПЕРЕХОДОМ В КАЛЬКУЛЯТОР -->
+  <section id="services" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 relative z-10 scroll-reveal">
+    <div class="flex flex-col md:flex-row md:items-end justify-between mb-14">
+      <div>
+        <div class="text-xs font-mono uppercase tracking-widest text-gray-400 mb-2">// 01. НАПРАВЛЕНИЯ РАЗРАБОТКИ</div>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Инженерные решения</h2>
+      </div>
+      <p class="text-sm text-gray-400 max-w-md mt-4 md:mt-0 font-normal">
+        Создаю законченные цифровые продукты: от серверной логики с высокой степенью отказоустойчивости до визуальных интерфейсов.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 stagger-cards">
+      
+      <!-- Услуга 1: Telegram-боты (от 990 ₽) -->
+      <div class="glass-panel p-8 flex flex-col justify-between group interactive-btn">
+        <div>
+          <div class="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white mb-6 group-hover:border-white/30 group-hover:scale-105 transition-all">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-bold text-white">Telegram-боты</h3>
+            <span class="text-xs font-mono text-gray-400">от 990 ₽</span>
+          </div>
+          <p class="text-sm text-gray-400 mb-6 leading-relaxed">
+            Автоматизация продаж, закрытые подписки, автоворонки, интеграции с ЮKassa, CryptoBot, Telegram Stars и внутренними CRM.
+          </p>
+          <ul class="text-xs font-mono space-y-2 text-gray-400 mb-8">
+            <li class="flex items-center gap-2"><span class="text-white">✓</span> aiogram 3.x архитектура</li>
+            <li class="flex items-center gap-2"><span class="text-white">✓</span> FSM сценарии любой сложности</li>
+            <li class="flex items-center gap-2"><span class="text-white">✓</span> Доступный хостинг от 150 ₽</li>
+          </ul>
+        </div>
+        <button data-calc-service="bot" class="service-calc-btn w-full py-3.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-all text-center flex items-center justify-center gap-1.5 active:scale-95">
+          <span>Рассчитать в калькуляторе</span>
+          <span>→</span>
+        </button>
+      </div>
+
+      <!-- Услуга 2: TMA (Mini Apps) (от 1 800 ₽) -->
+      <div class="glass-panel p-8 flex flex-col justify-between group border-white/20 relative interactive-btn">
+        <div class="absolute -top-3.5 right-8 px-3 py-1 rounded-full bg-white text-black font-mono text-[10px] font-bold uppercase tracking-wider shadow-glow-sm">
+          TREND
+        </div>
+        <div>
+          <div class="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white mb-6 group-hover:border-white/30 group-hover:scale-105 transition-all">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+          </div>
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-bold text-white">Telegram Mini Apps</h3>
+            <span class="text-xs font-mono text-gray-400">от 1 800 ₽</span>
+          </div>
+          <p class="text-sm text-gray-400 mb-6 leading-relaxed">
+            Полноценные веб-приложения внутри Telegram: интернет-магазины, кликеры, Web3-игры, личные кабинеты с бесшовной авторизацией.
+          </p>
+          <ul class="text-xs font-mono space-y-2 text-gray-400 mb-8">
+            <li class="flex items-center gap-2"><span class="text-white">✓</span> Telegram WebApp SDK & CloudStorage</li>
+            <li class="flex items-center gap-2"><span class="text-white">✓</span> TON Connect & Haptic Feedback</li>
+            <li class="flex items-center gap-2"><span class="text-white">✓</span> Нативная производительность 60 FPS</li>
+          </ul>
+        </div>
+        <button data-calc-service="tma" class="service-calc-btn w-full py-3.5 rounded-full bg-white text-black hover:bg-gray-200 text-xs font-bold transition-all shadow-glow-sm text-center flex items-center justify-center gap-1.5 active:scale-95">
+          <span>Рассчитать в калькуляторе</span>
+          <span>→</span>
+        </button>
+      </div>
+
+      <!-- Услуга 3: Landing & Web Services (от 1 400 ₽) -->
+      <div class="glass-panel p-8 flex flex-col justify-between group interactive-btn">
+        <div>
+          <div class="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white mb-6 group-hover:border-white/30 group-hover:scale-105 transition-all">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          </div>
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-bold text-white">Веб-сервисы и Landing</h3>
+            <span class="text-xs font-mono text-gray-400">от 1 400 ₽</span>
+          </div>
+          <p class="text-sm text-gray-400 mb-6 leading-relaxed">
+            Высококонверсионные посадочные страницы в эстетике Obsidian/Graphite, личные кабинеты и панели администрирования.
+          </p>
+          <ul class="text-xs font-mono space-y-2 text-gray-400 mb-8">
+            <li class="flex items-center gap-2"><span class="text-white">✓</span> Mobile-First адаптивность</li>
+            <li class="flex items-center gap-2"><span class="text-white">✓</span> Анимации Anime.js 60 FPS</li>
+            <li class="flex items-center gap-2"><span class="text-white">✓</span> Интеграция домена, SSL и заявок</li>
+          </ul>
+        </div>
+        <button data-calc-service="landing" class="service-calc-btn w-full py-3.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-all text-center flex items-center justify-center gap-1.5 active:scale-95">
+          <span>Рассчитать в калькуляторе</span>
+          <span>→</span>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ИНТЕРАКТИВНАЯ ЛАБОРАТОРИЯ КОДА И АРХИТЕКТУРЫ -->
+  <section id="code-lab" class="py-20 border-t border-white/[0.08] bg-obsidian-100/30 relative z-10 scroll-reveal">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+      
+      <div class="text-center max-w-2xl mx-auto mb-14">
+        <div class="text-xs font-mono uppercase tracking-widest text-gray-400 mb-2">// 02. СТАНДАРТЫ КОДА</div>
+        <h2 class="text-3xl font-extrabold text-white tracking-tight">Чистая асинхронная архитектура</h2>
+        <p class="text-sm text-gray-400 mt-3 font-normal">
+          Никаких спагетти-скриптов. Каждый проект строится по стандартам Clean Architecture с изоляцией слоев бизнес-логики.
+        </p>
+      </div>
+
+      <!-- Терминал -->
+      <div class="glass-panel overflow-hidden max-w-4xl mx-auto border border-white/15 shadow-2xl rounded-[32px]">
+        <div class="bg-obsidian-200 px-5 py-3.5 border-b border-white/10 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+            <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+            <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+            <span class="text-xs font-mono text-gray-400 ml-2">production_core.py — aiogram 3.x</span>
+          </div>
+          <div class="hidden sm:flex items-center gap-1.5 font-mono text-xs">
+            <button id="tab-bot" class="interactive-btn px-3 py-1 rounded-full bg-white/10 text-white font-medium">bot.py</button>
+            <button id="tab-db" class="interactive-btn px-3 py-1 rounded-full text-gray-400 hover:text-white transition-colors">database.py</button>
+            <button id="tab-tma" class="interactive-btn px-3 py-1 rounded-full text-gray-400 hover:text-white transition-colors">tma_sdk.js</button>
+          </div>
+          <button id="copy-code-btn" class="interactive-btn text-xs font-mono text-gray-400 hover:text-white flex items-center gap-1 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            <span id="copy-btn-text">Скопировать</span>
+          </button>
+        </div>
+
+        <div class="p-6 sm:p-8 font-mono text-xs sm:text-[13px] leading-relaxed overflow-x-auto text-gray-300">
+          <pre id="code-content"><code><span class="text-purple-400">from</span> aiogram <span class="text-purple-400">import</span> Bot, Dispatcher, Router, F
+<span class="text-purple-400">from</span> aiogram.filters <span class="text-purple-400">import</span> CommandStart
+<span class="text-purple-400">from</span> aiogram.types <span class="text-purple-400">import</span> Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
+
+router = Router(name=<span class="text-emerald-300">"core_router"</span>)
+
+<span class="text-gray-500"># Нативный запуск TMA с валидацией Telegram initData</span>
+<span class="text-purple-400">@router.message</span>(CommandStart())
+<span class="text-purple-400">async def</span> <span class="text-blue-400">cmd_start</span>(message: Message):
+    app_url = <span class="text-emerald-300">"https://myoec-sys.github.io/"</span>
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(
+            text=<span class="text-emerald-300">"⚡ Открыть Mini App"</span>, 
+            web_app=WebAppInfo(url=app_url)
+        )
+    ]])
+    <span class="text-purple-400">await</span> message.answer(
+        <span class="text-emerald-300">f"Добро пожаловать, &lt;b&gt;{message.from_user.first_name}&lt;/b&gt;! Ядро системы активно."</span>,
+        reply_markup=keyboard,
+        parse_mode=<span class="text-emerald-300">"HTML"</span>
+    )</code></pre>
+        </div>
+
+        <div class="bg-obsidian-200/60 px-6 py-3.5 border-t border-white/10 flex flex-wrap items-center justify-between text-[11px] font-mono text-gray-400 gap-2">
+          <div class="flex items-center gap-3">
+            <span class="text-accent-emerald flex items-center gap-1.5">● Synced with Telegram Bot API 7.x</span>
+            <span class="hidden sm:inline text-white/20">|</span>
+            <span class="hidden sm:inline">Asyncio Event Loop 60 FPS</span>
+          </div>
+          <button data-calc-service="bot" class="service-calc-btn interactive-btn text-white hover:underline flex items-center gap-1 font-semibold">
+            Выбрать этот стек в калькуляторе →
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ПОРТФОЛИО И ПРИМЕРЫ ВЫПОЛНЕННЫХ РАБОТ -->
+  <section id="portfolio" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 relative z-10 scroll-reveal">
+    <div class="flex flex-col md:flex-row md:items-end justify-between mb-14">
+      <div>
+        <div class="text-xs font-mono uppercase tracking-widest text-gray-400 mb-2">// 03. ПОРТФОЛИО И КЕЙСЫ</div>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Реализованные проекты</h2>
+      </div>
+      <a href="https://t.me/WorkSiteBotCod" target="_blank" rel="noopener" class="interactive-btn inline-flex items-center gap-2 text-xs font-mono text-accent-cyan hover:underline mt-4 md:mt-0">
+        Смотреть все работы в @WorkSiteBotCod ↗
+      </a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-cards">
+      
+      <!-- Проект 1 -->
+      <div class="glass-panel p-7 border-white/10 hover:border-white/30 flex flex-col justify-between interactive-btn">
+        <div>
+          <div class="flex items-center justify-between text-xs font-mono text-gray-400 mb-3">
+            <span>E-COMMERCE BOT</span>
+            <span class="text-accent-emerald font-semibold">PRODUCTION</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Shop & Subscription Bot</h3>
+          <p class="text-xs text-gray-400 mb-4 leading-relaxed font-normal">
+            Автоматизированный магазин цифровых товаров с интеграцией СБП, ЮKassa и CryptoBot. Автовыдача ключей и продление доступа к закрытому каналу.
+          </p>
+        </div>
+        <div class="pt-4 border-t border-white/10 flex items-center justify-between">
+          <span class="text-[11px] font-mono text-gray-400">aiogram 3.14 + Redis</span>
+          <button data-calc-service="bot" class="service-calc-btn text-xs text-white hover:underline font-semibold">
+            Собрать аналог →
+          </button>
+        </div>
+      </div>
+
+      <!-- Проект 2 -->
+      <div class="glass-panel p-7 border-white/10 hover:border-white/30 flex flex-col justify-between interactive-btn">
+        <div>
+          <div class="flex items-center justify-between text-xs font-mono text-gray-400 mb-3">
+            <span>TELEGRAM MINI APP</span>
+            <span class="text-accent-cyan font-semibold">WEBAPP 60 FPS</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">TMA Web3 Tap & Task Hub</h3>
+          <p class="text-xs text-gray-400 mb-4 leading-relaxed font-normal">
+            Игровой клиент внутри Telegram с подключением TON Connect, анимацией баланса в реальном времени, реферальным деревом и CloudStorage.
+          </p>
+        </div>
+        <div class="pt-4 border-t border-white/10 flex items-center justify-between">
+          <span class="text-[11px] font-mono text-gray-400">Tailwind + Anime.js</span>
+          <button data-calc-service="tma" class="service-calc-btn text-xs text-white hover:underline font-semibold">
+            Собрать аналог →
+          </button>
+        </div>
+      </div>
+
+      <!-- Проект 3 -->
+      <div class="glass-panel p-7 border-white/10 hover:border-white/30 flex flex-col justify-between interactive-btn">
+        <div>
+          <div class="flex items-center justify-between text-xs font-mono text-gray-400 mb-3">
+            <span>NEURAL AGENT</span>
+            <span class="text-white font-semibold">AI PIPELINE</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">AI Консультант & Менеджер</h3>
+          <p class="text-xs text-gray-400 mb-4 leading-relaxed font-normal">
+            Умный ассистент технической поддержки на базе OpenAI Assistants API с векторным поиском по базе знаний компании и генерацией ответов.
+          </p>
+        </div>
+        <div class="pt-4 border-t border-white/10 flex items-center justify-between">
+          <span class="text-[11px] font-mono text-gray-400">FastAPI + VectorDB</span>
+          <button data-calc-service="landing" class="service-calc-btn text-xs text-white hover:underline font-semibold">
+            Собрать аналог →
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ОНЛАЙН КАЛЬКУЛЯТОР СТОИМОСТИ С ДИНАМИЧЕСКИМИ ДОПАМИ ПОД ТИП ПРОДУКТА -->
+  <section id="calculator" class="py-24 border-t border-white/[0.08] relative z-10 scroll-reveal">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+      
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-12">
+        <div>
+          <div class="text-xs font-mono uppercase tracking-widest text-gray-400 mb-2">// 05. ОНЛАЙН-РАСЧЕТ</div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Калькулятор проекта & Прямой заказ</h2>
+        </div>
+        <div class="text-xs font-mono text-accent-emerald mt-4 md:mt-0 flex items-center gap-1.5 font-bold">
+          <span>●</span>
+          <span>Лимит сметы: строго до 3 000 ₽</span>
+        </div>
+      </div>
+
+      <!-- БЫСТРЫЕ ПРЕСЕТЫ -->
+      <div class="mb-8 flex flex-wrap items-center gap-2.5">
+        <span class="text-xs font-mono text-gray-400 mr-2">Быстрый шаблон:</span>
+        <button id="preset-mvp" class="interactive-btn px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-white/30 text-xs font-mono text-gray-300 hover:text-white transition-all">
+          ⚡ Бот (990 ₽)
+        </button>
+        <button id="preset-landing" class="interactive-btn px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-white/30 text-xs font-mono text-gray-300 hover:text-white transition-all">
+          💻 Landing (1 400 ₽)
+        </button>
+        <button id="preset-tma" class="interactive-btn px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-white/30 text-xs font-mono text-gray-300 hover:text-white transition-all">
+          🛍 Mini App (1 800 ₽)
+        </button>
+        <button id="preset-full" class="interactive-btn px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-white/30 text-xs font-mono text-gray-300 hover:text-white transition-all">
+          🚀 Комплекс Full (до 3 000 ₽)
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        <!-- Левая часть: Выбор параметров -->
+        <div id="calc-panel-left" class="lg:col-span-7 glass-panel p-6 sm:p-9 space-y-8 rounded-[32px] transition-all duration-500">
+          
+          <!-- Шаг 1: Базовый тип продукта -->
+          <div>
+            <label class="block text-xs font-mono uppercase tracking-wider text-gray-400 mb-4">
+              1. Базовый тип продукта:
+            </label>
+            <div class="space-y-3">
+              <label id="card-type-bot" class="interactive-btn calc-radio-card flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 cursor-pointer transition-all has-[:checked]:border-white has-[:checked]:bg-white/[0.08]">
+                <div class="flex items-center gap-3">
+                  <input type="radio" name="base_type" value="bot" data-price="990" data-days="1-2 дня" checked class="w-4 h-4 accent-white" />
+                  <div>
+                    <div class="text-sm font-semibold text-white">Telegram-бот (aiogram 3)</div>
+                    <div class="text-xs text-gray-400">Асинхронный бот с меню, инлайнами и сценарием</div>
+                  </div>
+                </div>
+                <span class="text-xs font-mono text-white font-bold">от 990 ₽</span>
+              </label>
+
+              <label id="card-type-landing" class="interactive-btn calc-radio-card flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 cursor-pointer transition-all has-[:checked]:border-white has-[:checked]:bg-white/[0.08]">
+                <div class="flex items-center gap-3">
+                  <input type="radio" name="base_type" value="landing" data-price="1400" data-days="2-3 дня" class="w-4 h-4 accent-white" />
+                  <div>
+                    <div class="text-sm font-semibold text-white">Dark Landing / Веб-сервис</div>
+                    <div class="text-xs text-gray-400">Премиальный одностраничник в стиле Graphite с 60 FPS</div>
+                  </div>
+                </div>
+                <span class="text-xs font-mono text-white font-bold">от 1 400 ₽</span>
+              </label>
+
+              <label id="card-type-tma" class="interactive-btn calc-radio-card flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 cursor-pointer transition-all has-[:checked]:border-white has-[:checked]:bg-white/[0.08]">
+                <div class="flex items-center gap-3">
+                  <input type="radio" name="base_type" value="tma" data-price="1800" data-days="3-4 дня" class="w-4 h-4 accent-white" />
+                  <div>
+                    <div class="text-sm font-semibold text-white">Telegram Mini App (TMA)</div>
+                    <div class="text-xs text-gray-400">Нативное интерактивное веб-приложение внутри мессенджера</div>
+                  </div>
+                </div>
+                <span class="text-xs font-mono text-white font-bold">от 1 800 ₽</span>
+              </label>
+
+              <label id="card-type-combo" class="interactive-btn calc-radio-card flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 cursor-pointer transition-all has-[:checked]:border-white has-[:checked]:bg-white/[0.08]">
+                <div class="flex items-center gap-3">
+                  <input type="radio" name="base_type" value="combo" data-price="2100" data-days="3-5 дней" class="w-4 h-4 accent-white" />
+                  <div>
+                    <div class="text-sm font-semibold text-white">Комплекс (Бот + Mini App)</div>
+                    <div class="text-xs text-gray-400">Полноценная закрытая экосистема под ключ</div>
+                  </div>
+                </div>
+                <span class="text-xs font-mono text-white font-bold">от 2 100 ₽</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Шаг 2: ДИНАМИЧЕСКИЙ БЛОК ДОПОЛНИТЕЛЬНЫХ МОДУЛЕЙ -->
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <label class="block text-xs font-mono uppercase tracking-wider text-gray-400">
+                2. Необходимые модули и опции:
+              </label>
+              <span id="calc-addon-badge" class="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-300">
+                Опции для Telegram-бота
+              </span>
+            </div>
+            
+            <!-- Контейнер с динамическими чекбоксами -->
+            <div id="dynamic-addons-container" class="space-y-3">
+              <!-- Чекбоксы генерируются через JavaScript под каждый тип продукта -->
+            </div>
+          </div>
+
+          <!-- Шаг 3: Срочность разработки -->
+          <div>
+            <label class="block text-xs font-mono uppercase tracking-wider text-gray-400 mb-3">
+              3. Срочность:
+            </label>
+            <div class="grid grid-cols-2 gap-3 font-mono text-xs">
+              <label class="interactive-btn flex items-center justify-center p-3.5 rounded-2xl border border-white/10 bg-white/[0.02] cursor-pointer has-[:checked]:border-white has-[:checked]:bg-white/10">
+                <input type="radio" name="speed" value="standard" checked class="hidden" />
+                <span>Стандартный срок</span>
+              </label>
+              <label class="interactive-btn flex items-center justify-center p-3.5 rounded-2xl border border-white/10 bg-white/[0.02] cursor-pointer has-[:checked]:border-accent-cyan has-[:checked]:bg-cyan-500/10 text-accent-cyan">
+                <input type="radio" name="speed" value="express" class="hidden" />
+                <span>⚡ Экспресс (+15%)</span>
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Правая часть: Итоговая карточка со сметой (макс 3000 ₽) -->
+        <div class="lg:col-span-5 sticky top-24">
+          <div id="calc-panel-right" class="glass-panel p-7 sm:p-9 border-white/20 shadow-glow-sm rounded-[32px] transition-all duration-500">
+            
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-mono uppercase tracking-widest text-gray-400">Ориентировочная смета</div>
+              <span class="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-accent-emerald/20 text-accent-emerald border border-accent-emerald/30 font-bold">MAX 3 000 ₽</span>
+            </div>
+            
+            <!-- Цифра стоимости -->
+            <div class="flex items-baseline gap-2 mb-6">
+              <span id="calc-total-display" class="text-4xl sm:text-5xl font-extrabold text-white tracking-tight font-mono">990</span>
+              <span class="text-2xl font-bold text-gray-400">₽</span>
+            </div>
+
+            <!-- Детализация -->
+            <div class="space-y-3 py-5 border-y border-white/10 text-xs font-mono mb-6">
+              <div class="flex justify-between text-gray-400">
+                <span>Тип:</span>
+                <span id="calc-type-name" class="text-white font-medium">Telegram-бот (aiogram 3)</span>
+              </div>
+              <div class="flex justify-between text-gray-400">
+                <span>Срок:</span>
+                <span id="calc-duration" class="text-white font-medium">1-2 дня</span>
+              </div>
+              <div class="flex justify-between text-gray-400">
+                <span>Выбрано доп. опций:</span>
+                <span id="calc-options-count" class="text-white font-medium">0</span>
+              </div>
+            </div>
+
+            <!-- Кнопка генерации Telegram ссылки -->
+            <a id="calc-order-btn" 
+               href="https://t.me/myoec?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5!%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%B7%D0%B0%D0%BA%D0%B0%D0%B7%D0%B0%D1%82%D1%8C%20%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82%3A%20Telegram-%D0%B1%D0%BE%D1%82" 
+               target="_blank" rel="noopener"
+               class="interactive-btn w-full py-4 rounded-full bg-white text-black font-bold text-sm tracking-tight hover:bg-gray-200 transition-all active:scale-95 shadow-glow-sm flex items-center justify-center gap-2 mb-3 text-center">
+              <span>Заказать проект (@myoec)</span>
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+
+            <p class="text-[11px] text-gray-400 text-center leading-normal">
+              Ссылка открывает личный чат со сформированным техническим списком опций
+            </p>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ВОПРОСЫ И ОТВЕТЫ (FAQ) -->
+  <section id="faq" class="py-24 border-t border-white/[0.08] max-w-4xl mx-auto px-4 sm:px-6 relative z-10 scroll-reveal">
+    <div class="text-left mb-12">
+      <div class="text-xs font-mono uppercase tracking-widest text-gray-400 mb-2">// 06. ЧАСТО ЗАДАВАЕМЫЕ ВОПРОСЫ</div>
+      <h2 class="text-3xl font-extrabold text-white tracking-tight">Вопросы и ответы</h2>
+    </div>
+
+    <div class="space-y-4">
+      
+      <!-- FAQ 1 -->
+      <div class="faq-item glass-panel p-6 cursor-pointer transition-all duration-300 rounded-3xl interactive-btn">
+        <div class="flex items-center justify-between gap-4">
+          <h3 class="text-sm sm:text-base font-semibold text-white">
+            Где будет размещен бот или сервис после завершения?
+          </h3>
+          <div class="faq-icon-wrapper w-8 h-8 shrink-0 rounded-full border border-white/20 flex items-center justify-center text-sm transition-transform duration-300">
+            +
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p class="pt-4 text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
+            Развертывание производится на вашем виртуальном сервере (VPS) под управлением Ubuntu в изолированном Docker-контейнере. Если у вас нет своего сервера, я подберу проверенного недорогого хостинг-провайдера (от 150-200 руб/мес), настрою автозапуск демона при сбоях и передам вам все доступы root.
+          </p>
+        </div>
+      </div>
+
+      <!-- FAQ 2 -->
+      <div class="faq-item glass-panel p-6 cursor-pointer transition-all duration-300 rounded-3xl interactive-btn">
+        <div class="flex items-center justify-between gap-4">
+          <h3 class="text-sm sm:text-base font-semibold text-white">
+            Передаются ли исходные коды проекта?
+          </h3>
+          <div class="faq-icon-wrapper w-8 h-8 shrink-0 rounded-full border border-white/20 flex items-center justify-center text-sm transition-transform duration-300">
+            +
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p class="pt-4 text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
+            Да, 100% авторских прав и чистый репозиторий (Git / ZIP) со структурированными комментариями, файлом <code>.env.example</code> и подробной пошаговой инструкцией <code>README.md</code> по запуску передаются вам без каких-либо зашифрованных модулей или скрытых привязок.
+          </p>
+        </div>
+      </div>
+
+      <!-- FAQ 3 -->
+      <div class="faq-item glass-panel p-6 cursor-pointer transition-all duration-300 rounded-3xl interactive-btn">
+        <div class="flex items-center justify-between gap-4">
+          <h3 class="text-sm sm:text-base font-semibold text-white">
+            Как происходит оплата и безопасна ли сделка?
+          </h3>
+          <div class="faq-icon-wrapper w-8 h-8 shrink-0 rounded-full border border-white/20 flex items-center justify-center text-sm transition-transform duration-300">
+            +
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p class="pt-4 text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
+            Работа строится по прозрачной схеме: поэтапная оплата (обычно 50% перед стартом и 50% после демонстрации рабочего прототипа на тестовом стенде). Принимаю оплату на банковские карты РФ, СБП, а также в криптовалюте USDT (TRC20/TON) и Telegram Stars.
+          </p>
+        </div>
+      </div>
+
+      <!-- FAQ 4 -->
+      <div class="faq-item glass-panel p-6 cursor-pointer transition-all duration-300 rounded-3xl interactive-btn">
+        <div class="flex items-center justify-between gap-4">
+          <h3 class="text-sm sm:text-base font-semibold text-white">
+            Что если после релиза в боте обнаружится баг?
+          </h3>
+          <div class="faq-icon-wrapper w-8 h-8 shrink-0 rounded-full border border-white/20 flex items-center justify-center text-sm transition-transform duration-300">
+            +
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p class="pt-4 text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
+            Каждый проект сопровождается бесплатной гарантией после релиза. Любые выявленные ошибки, несоответствия ТЗ или баги устраняются оперативно и в приоритетном порядке без дополнительной платы. Также доступно постоянное ежемесячное техническое сопровождение.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ФУТЕР САЙТА (FOOTER) -->
+  <footer class="border-t border-white/[0.08] bg-obsidian-400 relative z-10 pt-16 pb-24 md:pb-12 text-xs text-gray-400">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+      
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
+        
+        <!-- Колонка 1: Бренд -->
+        <div class="md:col-span-2 space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center font-mono font-bold text-white text-xs">
+              MO
+            </div>
+            <span class="font-bold tracking-tight text-white text-base">MYOEC // VIBECODE</span>
+          </div>
+          <p class="text-gray-400 max-w-sm leading-relaxed text-xs font-normal">
+            Высокоскоростная разработка ботов, Web3 Mini Apps и облачных сервисов. Архитектурная надежность и чистый асинхронный код.
+          </p>
+          <div class="font-mono text-[11px] text-gray-400">
+            © 2026 MYOEC. All rights reserved.
+          </div>
+        </div>
+
+        <!-- Колонка 2: Прямые ссылки -->
+        <div class="space-y-2.5 font-mono">
+          <div class="text-white font-semibold text-xs tracking-wider uppercase mb-3">Контакты проекта</div>
+          <div>
+            <a href="https://t.me/myoec" target="_blank" rel="noopener" class="interactive-btn text-gray-300 hover:text-white transition-colors flex items-center gap-2">
+              <span>Личные сообщения:</span> <strong class="text-white">@myoec</strong>
+            </a>
+          </div>
+          <div>
+            <a href="https://t.me/vibecodeh" target="_blank" rel="noopener" class="interactive-btn text-gray-300 hover:text-white transition-colors flex items-center gap-2">
+              <span>Telegram-канал:</span> <strong class="text-white">@vibecodeh</strong>
+            </a>
+          </div>
+          <div>
+            <a href="https://t.me/WorkSiteBotCod" target="_blank" rel="noopener" class="interactive-btn text-gray-300 hover:text-white transition-colors flex items-center gap-2">
+              <span>Портфолио:</span> <strong class="text-white">WorkSiteBotCod</strong>
+            </a>
+          </div>
+          <div>
+            <a href="https://myoec-sys.github.io/" target="_blank" rel="noopener" class="interactive-btn text-gray-300 hover:text-white transition-colors flex items-center gap-2">
+              <span>GitHub Pages:</span> <strong class="text-white">myoec-sys</strong>
+            </a>
+          </div>
+        </div>
+
+        <!-- Колонка 3: Навигация -->
+        <div class="space-y-2 font-mono">
+          <div class="text-white font-semibold text-xs tracking-wider uppercase mb-3">Быстрый переход</div>
+          <div><a href="#services" class="hover:text-white transition-colors">Инженерные решения</a></div>
+          <div><a href="#calculator" class="hover:text-white transition-colors">Калькулятор проекта</a></div>
+          <div><a href="#code-lab" class="hover:text-white transition-colors">Лаборатория кода</a></div>
+          <div><a href="#faq" class="hover:text-white transition-colors">Частые вопросы</a></div>
+        </div>
+
+      </div>
+
+      <div class="pt-8 border-t border-white/[0.05] flex flex-col sm:flex-row items-center justify-between text-[11px] font-mono text-gray-400 gap-4">
+        <div>Built with Tailwind CSS & Anime.js • Mobile First 60 FPS</div>
+        <div class="flex items-center gap-4">
+          <a href="https://t.me/myoec" class="text-white hover:underline">Telegram: @myoec</a>
+          <span>•</span>
+          <a href="https://t.me/vibecodeh" class="text-white hover:underline">Channel: @vibecodeh</a>
+        </div>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- ПЛАВАЮЩИЙ МОБИЛЬНЫЙ БАР ДЛЯ БЫСТРОЙ СВЯЗИ -->
+  <div class="fixed bottom-4 inset-x-4 z-40 md:hidden">
+    <div class="glass-panel rounded-full p-2 flex items-center justify-between shadow-2xl border-white/20">
+      <a href="https://t.me/vibecodeh" target="_blank" rel="noopener" class="interactive-btn px-4 py-2 text-xs font-mono text-gray-300 flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-accent-cyan"></span>
+        @vibecodeh
+      </a>
+      <a href="https://t.me/myoec" target="_blank" rel="noopener" class="interactive-btn px-6 py-3 rounded-full bg-white text-black font-bold text-xs tracking-tight shadow-glow-sm flex items-center gap-1.5">
+        <span>Заказать (@myoec)</span>
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+      /* ==========================================================================
+         1. ДАННЫЕ ДОПОЛНИТЕЛЬНЫХ ОПЦИЙ ПОД КАЖДЫЙ ТИП ПРОДУКТА
+         ========================================================================== */
+      const productAddons = {
+        bot: {
+          badge: 'Опции для Telegram-бота',
+          options: [
+            { id: 'opt-bot-host', name: 'Хостинг и запуск бота под ключ', price: 150 },
+            { id: 'opt-bot-pay', name: 'Прием платежей (ЮKassa / CryptoBot / Stars)', price: 350 },
+            { id: 'opt-bot-admin', name: 'Панель управления и рассылка в боте', price: 250 },
+            { id: 'opt-bot-ai', name: 'Интеграция нейросетей (ChatGPT / Claude)', price: 350 },
+            { id: 'opt-bot-db', name: 'База данных SQLite / PostgreSQL', price: 200 }
+          ]
+        },
+        landing: {
+          badge: 'Опции для Landing / Веб-сервиса',
+          options: [
+            { id: 'opt-land-domain', name: 'Подключение своего домена и SSL-сертификата', price: 150 },
+            { id: 'opt-land-3d', name: 'Премиум 3D-анимации и шейдеры (Anime.js / Three.js)', price: 300 },
+            { id: 'opt-land-lead', name: 'Заявки в Telegram-канал или чат администратора', price: 200 },
+            { id: 'opt-land-seo', name: 'SEO-оптимизация и интеграция аналитики', price: 250 },
+            { id: 'opt-land-adapt', name: 'Адаптация под экраны мобильных и планшетов', price: 200 }
+          ]
+        },
+        tma: {
+          badge: 'Опции для Telegram Mini App',
+          options: [
+            { id: 'opt-tma-storage', name: 'Подключение Telegram CloudStorage и сохранение прогресса', price: 200 },
+            { id: 'opt-tma-ton', name: 'Интеграция TON Connect (криптокошелек)', price: 350 },
+            { id: 'opt-tma-haptic', name: 'Настройка тактильного отклика (Haptic Feedback)', price: 150 },
+            { id: 'opt-tma-ref', name: 'Реферальная система уровней и наград', price: 300 },
+            { id: 'opt-tma-deploy', name: 'Деплой на быстрый HTTPS хостинг / Vercel', price: 200 }
+          ]
+        },
+        combo: {
+          badge: 'Опции для Комплекса (Бот + TMA)',
+          options: [
+            { id: 'opt-combo-sync', name: 'Полная синхронизация базы данных бота и TMA', price: 300 },
+            { id: 'opt-combo-pay', name: 'Единый платежный шлюз (Stars + TON + Карты)', price: 350 },
+            { id: 'opt-combo-vps', name: 'Настройка выделенного VPS сервера', price: 150 },
+            { id: 'opt-combo-panel', name: 'Веб-панель аналитики пользователей', price: 250 }
+          ]
+        }
+      };
+
+      const typeTitles = {
+        bot: 'Telegram-бот (aiogram 3)',
+        landing: 'Dark Landing / Веб-сервис',
+        tma: 'Telegram Mini App (TMA)',
+        combo: 'Комплекс (Бот + Mini App)'
+      };
+
+      /* ==========================================================================
+         2. СВЕТОВАЯ РАСХОДЯЩАЯСЯ ВОЛНА НА ТАП / КЛИК (ANIME.JS RIPPLE CANVAS)
+         ========================================================================== */
+      const canvas = document.getElementById('touch-fx-canvas');
+      const ctx = canvas ? canvas.getContext('2d') : null;
+      let ripples = [];
+
+      function resizeCanvas() {
+        if (!canvas) return;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      function createRipple(x, y) {
+        if (!ctx) return;
+        const rippleObj = {
+          x: x,
+          y: y,
+          radius: 4,
+          opacity: 0.85,
+          lineWidth: 3
+        };
+        ripples.push(rippleObj);
+
+        anime({
+          targets: rippleObj,
+          radius: [4, 90],
+          opacity: [0.85, 0],
+          lineWidth: [3, 0.5],
+          duration: 750,
+          easing: 'easeOutCubic',
+          complete: () => {
+            ripples = ripples.filter(r => r !== rippleObj);
+          }
+        });
+      }
+
+      function renderRipples() {
+        if (!ctx || !canvas) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < ripples.length; i++) {
+          const r = ripples[i];
+          ctx.beginPath();
+          ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${r.opacity})`;
+          ctx.lineWidth = r.lineWidth;
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+          ctx.stroke();
+        }
+        requestAnimationFrame(renderRipples);
+      }
+      renderRipples();
+
+      window.addEventListener('pointerdown', (e) => {
+        createRipple(e.clientX, e.clientY);
+        
+        const btn = e.target.closest('.interactive-btn, button, a, .faq-item');
+        if (btn) {
+          anime.remove(btn);
+          anime({
+            targets: btn,
+            scale: [1, 0.96, 1],
+            duration: 350,
+            easing: 'easeOutElastic(1, .6)'
+          });
+        }
+      });
+
+      /* ==========================================================================
+         3. БЕСШОВНАЯ АВТОМАТИЧЕСКАЯ КВАНТОВАЯ ПРИЗМА И СФЕРА (ANIME.JS)
+         ========================================================================== */
+      anime({
+        targets: '#data-pulse-ring-4',
+        strokeDashoffset: [0, -440],
+        easing: 'linear',
+        duration: 3200,
+        loop: true
+      });
+
+      anime({
+        targets: '#data-pulse-ring-2',
+        strokeDashoffset: [0, 360],
+        easing: 'linear',
+        duration: 2400,
+        loop: true
+      });
+
+      anime({
+        targets: ['#ring-6', '#ring-4', '#data-pulse-ring-4', '#ring-2', '#data-pulse-ring-2'],
+        rotate: 360,
+        transformOrigin: '250px 250px',
+        easing: 'linear',
+        duration: 48000,
+        loop: true
+      });
+
+      anime({
+        targets: ['#ring-5', '#ring-3', '#ring-1'],
+        rotate: -360,
+        transformOrigin: '250px 250px',
+        easing: 'linear',
+        duration: 36000,
+        loop: true
+      });
+
+      const autoSyncTimeline = anime.timeline({
+        loop: true,
+        direction: 'alternate',
+        easing: 'easeInOutSine'
+      });
+
+      autoSyncTimeline
+        .add({
+          targets: '#quantum-core-group',
+          scale: [1, 0.12],
+          opacity: [1, 0.3],
+          duration: 2800,
+          easing: 'easeInOutCubic'
+        }, 0)
+        .add({
+          targets: ['.prism-polygon', '.data-pulse-track'],
+          scale: [1, 0.18],
+          transformOrigin: '250px 250px',
+          opacity: [
+            { value: 0.2, duration: 2800 }
+          ],
+          delay: anime.stagger(90, { from: 'last' }),
+          duration: 2800,
+          easing: 'easeInOutCubic'
+        }, 0)
+        .add({
+          targets: '#grid-warp-glow',
+          scale: [1, 0.5],
+          opacity: [0.3, 0.05],
+          duration: 2800,
+          easing: 'easeInOutCubic'
+        }, 0)
+        .add({
+          targets: '#quantum-flash',
+          opacity: [0, 0.85, 0],
+          scale: [0.2, 1.8],
+          duration: 350,
+          easing: 'easeOutQuad'
+        }, 2750)
+        .add({
+          targets: '#quantum-core-group',
+          scale: [0.12, 1.1, 1],
+          opacity: [0.3, 1],
+          duration: 3200,
+          easing: 'easeOutElastic(1, .6)'
+        }, 3000)
+        .add({
+          targets: ['.prism-polygon', '.data-pulse-track'],
+          scale: [0.18, 1],
+          opacity: [
+            { value: 0.9, duration: 1600 },
+            { value: (el) => parseFloat(el.getAttribute('stroke-opacity')) || 0.6, duration: 1600 }
+          ],
+          delay: anime.stagger(110, { from: 'first' }),
+          duration: 3200,
+          easing: 'easeOutQuart'
+        }, 3000)
+        .add({
+          targets: '#grid-warp-glow',
+          scale: [0.5, 1.25, 1],
+          opacity: [0.05, 0.45, 0.25],
+          duration: 3200,
+          easing: 'easeOutQuart'
+        }, 3000);
+
+      const prismZone = document.getElementById('hero-prism-zone');
+      const shockwave = document.getElementById('manual-shockwave');
+
+      if (prismZone && shockwave) {
+        prismZone.addEventListener('pointerdown', () => {
+          anime.remove(shockwave);
+          anime({
+            targets: shockwave,
+            r: [10, 230],
+            opacity: [1, 0],
+            strokeWidth: [4, 0.5],
+            duration: 800,
+            easing: 'easeOutExpo'
+          });
+
+          anime({
+            targets: '#quantum-core-group',
+            scale: [1, 1.35, 1],
+            duration: 500,
+            easing: 'easeOutElastic(1, .5)'
+          });
+        });
+      }
+
+      /* ==========================================================================
+         4. 3D-ТИЛТ ЗА ПАЛЬЦЕМ, КУРСОРОМ И ГИРОСКОП
+         ========================================================================== */
+      const tiltElement = document.getElementById('prism-tilt-element');
+
+      let currentTiltX = 0, currentTiltY = 0;
+      let targetTiltX = 0, targetTiltY = 0;
+
+      function updateTilt() {
+        currentTiltX += (targetTiltX - currentTiltX) * 0.08;
+        currentTiltY += (targetTiltY - currentTiltY) * 0.08;
+        if (tiltElement) {
+          tiltElement.style.transform = `rotateX(${currentTiltX.toFixed(2)}deg) rotateY(${currentTiltY.toFixed(2)}deg)`;
+        }
+        requestAnimationFrame(updateTilt);
+      }
+      updateTilt();
+
+      window.addEventListener('mousemove', (e) => {
+        const { innerWidth, innerHeight } = window;
+        const x = (e.clientX / innerWidth - 0.5) * 2;
+        const y = (e.clientY / innerHeight - 0.5) * 2;
+        targetTiltX = -y * 18;
+        targetTiltY = x * 18;
+      });
+
+      if (prismZone) {
+        prismZone.addEventListener('touchmove', (e) => {
+          if (!e.touches[0]) return;
+          const rect = prismZone.getBoundingClientRect();
+          const touch = e.touches[0];
+          const x = ((touch.clientX - rect.left) / rect.width - 0.5) * 2;
+          const y = ((touch.clientY - rect.top) / rect.height - 0.5) * 2;
+          targetTiltX = -y * 22;
+          targetTiltY = x * 22;
+        }, { passive: true });
+
+        prismZone.addEventListener('touchend', () => {
+          targetTiltX = 0;
+          targetTiltY = 0;
+        });
+      }
+
+      if (window.DeviceOrientationEvent) {
+        window.addEventListener('deviceorientation', (e) => {
+          if (e.gamma !== null && e.beta !== null) {
+            targetTiltY = Math.max(-25, Math.min(25, e.gamma / 1.5));
+            targetTiltX = Math.max(-25, Math.min(25, (e.beta - 45) / 1.5));
+          }
+        }, { passive: true });
+      }
+
+      /* ==========================================================================
+         5. АНИМАЦИИ ПОЯВЛЕНИЯ ПРИ СКРОЛЛЕ
+         ========================================================================== */
+      anime({
+        targets: '.hero-anim-item',
+        opacity: [0, 1],
+        translateY: [24, 0],
+        delay: anime.stagger(100, { start: 200 }),
+        duration: 800,
+        easing: 'easeOutCubic'
+      });
+
+      anime({
+        targets: '#hero-floating-badge',
+        translateY: [-3, 3],
+        duration: 2500,
+        direction: 'alternate',
+        loop: true,
+        easing: 'easeInOutSine'
+      });
+
+      const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const el = entry.target;
+            anime({
+              targets: el,
+              opacity: [0, 1],
+              translateY: [32, 0],
+              duration: 750,
+              easing: 'easeOutCubic'
+            });
+
+            const cards = el.querySelectorAll('.stagger-cards > *');
+            if (cards.length > 0) {
+              anime({
+                targets: cards,
+                opacity: [0, 1],
+                translateY: [24, 0],
+                delay: anime.stagger(90, { start: 150 }),
+                duration: 650,
+                easing: 'easeOutQuad'
+              });
+            }
+
+            revealObserver.unobserve(el);
+          }
+        });
+      }, { threshold: 0.12 });
+
+      document.querySelectorAll('.scroll-reveal').forEach(sec => revealObserver.observe(sec));
+
+      /* ==========================================================================
+         6. ИНТЕРАКТИВНЫЙ АККОРДЕОН FAQ
+         ========================================================================== */
+      const faqItems = document.querySelectorAll('.faq-item');
+
+      faqItems.forEach((item) => {
+        item.addEventListener('click', () => {
+          const isActive = item.classList.contains('active');
+          faqItems.forEach(i => i.classList.remove('active'));
+          if (!isActive) {
+            item.classList.add('active');
+          }
+        });
+      });
+
+      /* ==========================================================================
+         7. ДИНАМИЧЕСКИЙ КАЛЬКУЛЯТОР СО СТРОГИМ ЛИМИТОМ ДО 3 000 РУБЛЕЙ
+         ========================================================================== */
+      const baseRadios = document.querySelectorAll('input[name="base_type"]');
+      const speedRadios = document.querySelectorAll('input[name="speed"]');
+      const addonsContainer = document.getElementById('dynamic-addons-container');
+      const addonBadge = document.getElementById('calc-addon-badge');
+      
+      const totalDisplay = document.getElementById('calc-total-display');
+      const typeNameDisplay = document.getElementById('calc-type-name');
+      const durationDisplay = document.getElementById('calc-duration');
+      const optionsCountDisplay = document.getElementById('calc-options-count');
+      const orderBtn = document.getElementById('calc-order-btn');
+      const calcPanelLeft = document.getElementById('calc-panel-left');
+      const calcPanelRight = document.getElementById('calc-panel-right');
+
+      let animatedPrice = { val: 990 };
+
+      // Функция рендеринга динамических чекбоксов под конкретный продукт
+      function renderDynamicAddons(productKey, animate = true) {
+        const config = productAddons[productKey] || productAddons.bot;
+        if (addonBadge) {
+          addonBadge.textContent = config.badge;
+        }
+
+        addonsContainer.innerHTML = '';
+
+        config.options.forEach((opt) => {
+          const label = document.createElement('label');
+          label.className = 'interactive-btn addon-item flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 cursor-pointer transition-colors has-[:checked]:border-white/60 has-[:checked]:bg-white/[0.05]';
+          label.innerHTML = `
+            <div class="flex items-center gap-3">
+              <input type="checkbox" id="${opt.id}" value="${opt.name}" data-price="${opt.price}" class="w-4 h-4 accent-white rounded-md calc-addon-input" />
+              <span class="text-xs sm:text-sm font-medium text-gray-200">${opt.name}</span>
+            </div>
+            <span class="text-xs font-mono text-gray-300 font-semibold">+${opt.price} ₽</span>
+          `;
+          addonsContainer.appendChild(label);
+        });
+
+        // Назначаем обработчики на новые чекбоксы
+        const newCheckboxes = addonsContainer.querySelectorAll('.calc-addon-input');
+        newCheckboxes.forEach(cb => {
+          cb.addEventListener('change', calculateTotal);
+        });
+
+        if (animate) {
+          anime({
+            targets: addonsContainer.querySelectorAll('.addon-item'),
+            opacity: [0, 1],
+            translateY: [12, 0],
+            delay: anime.stagger(45),
+            duration: 400,
+            easing: 'easeOutQuad'
+          });
+        }
+      }
+
+      function calculateTotal() {
+        const baseRadio = document.querySelector('input[name="base_type"]:checked') || baseRadios[0];
+        const basePrice = parseInt(baseRadio.dataset.price, 10);
+        const baseDays = baseRadio.dataset.days;
+        const baseKey = baseRadio.value;
+
+        let optionsSum = 0;
+        let selectedOptions = [];
+
+        const currentCheckboxes = addonsContainer.querySelectorAll('.calc-addon-input');
+        currentCheckboxes.forEach(cb => {
+          if (cb.checked) {
+            optionsSum += parseInt(cb.dataset.price, 10);
+            selectedOptions.push(cb.value);
+          }
+        });
+
+        const speed = (document.querySelector('input[name="speed"]:checked') || {}).value;
+        const speedMultiplier = speed === 'express' ? 1.15 : 1.0;
+
+        const rawTotal = Math.round((basePrice + optionsSum) * speedMultiplier);
+
+        // ЖЕСТКИЙ ЛИМИТ: ЦЕНА НЕ ДОЛЖНА ПРЕВЫШАТЬ 3 000 РУБЛЕЙ
+        const finalTotal = Math.min(rawTotal, 3000);
+
+        anime({
+          targets: animatedPrice,
+          val: finalTotal,
+          round: 1,
+          easing: 'easeOutExpo',
+          duration: 600,
+          update: function() {
+            totalDisplay.textContent = Math.round(animatedPrice.val).toLocaleString('ru-RU');
+          }
+        });
+
+        typeNameDisplay.textContent = typeTitles[baseKey] || 'Кастомный проект';
+        durationDisplay.textContent = speed === 'express' ? `${baseDays} (⚡ Экспресс)` : baseDays;
+        optionsCountDisplay.textContent = selectedOptions.length;
+
+        const messageText = `Здравствуйте! Хочу заказать разработку проекта.\n\n` +
+                          `• Тип: ${typeTitles[baseKey]}\n` +
+                          `• Срок: ${speed === 'express' ? 'Экспресс-разработка' : 'Стандарт'}\n` +
+                          `• Дополнительные модули (${selectedOptions.length}):\n` +
+                          (selectedOptions.length ? selectedOptions.map(o => `  — ${o}`).join('\n') : '  — Базовая комплектация\n') +
+                          `\nОриентировочная смета: ${finalTotal.toLocaleString('ru-RU')} ₽ (в рамках бюджета до 3 000 ₽)`;
+
+        orderBtn.href = `https://t.me/myoec?text=${encodeURIComponent(messageText)}`;
+      }
+
+      // При переключении радиокнопки базового типа продукта перерисовываем допы
+      baseRadios.forEach(r => {
+        r.addEventListener('change', () => {
+          renderDynamicAddons(r.value, true);
+          calculateTotal();
+        });
+      });
+
+      speedRadios.forEach(s => s.addEventListener('change', calculateTotal));
+
+      // Ключевая функция: выбор услуги, подстановка допов, подсветка и мягкий скролл
+      function scrollToCalculatorAndSelect(serviceType, checkDefaultHost = false) {
+        const targetRadio = document.querySelector(`input[name="base_type"][value="${serviceType}"]`);
+        if (targetRadio) {
+          targetRadio.checked = true;
+        }
+
+        // Перерисовываем допы под выбранную категорию
+        renderDynamicAddons(serviceType, true);
+
+        if (checkDefaultHost && serviceType === 'bot') {
+          const hostCb = document.getElementById('opt-bot-host');
+          if (hostCb) hostCb.checked = true;
+        }
+
+        calculateTotal();
+
+        // Плавный скролл к калькулятору
+        const calcSection = document.getElementById('calculator');
+        if (calcSection) {
+          calcSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // Подсвечиваем радио-карточку
+        const targetCard = document.getElementById(`card-type-${serviceType}`);
+        if (targetCard) {
+          document.querySelectorAll('.calc-radio-card').forEach(c => c.classList.remove('radio-card-highlight'));
+          targetCard.classList.add('radio-card-highlight');
+
+          anime({
+            targets: targetCard,
+            scale: [1, 1.03, 1],
+            duration: 650,
+            easing: 'easeOutElastic(1, .6)'
+          });
+
+          setTimeout(() => {
+            targetCard.classList.remove('radio-card-highlight');
+          }, 1800);
+        }
+
+        // Подсвечиваем панели калькулятора
+        if (calcPanelLeft && calcPanelRight) {
+          calcPanelLeft.classList.add('calc-highlight');
+          calcPanelRight.classList.add('calc-highlight');
+          setTimeout(() => {
+            calcPanelLeft.classList.remove('calc-highlight');
+            calcPanelRight.classList.remove('calc-highlight');
+          }, 1400);
+        }
+      }
+
+      // Кнопки «Рассчитать в калькуляторе» из секции «Инженерные решения»
+      document.querySelectorAll('.service-calc-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+          e.preventDefault();
+          const serviceType = button.getAttribute('data-calc-service') || 'bot';
+          scrollToCalculatorAndSelect(serviceType);
+        });
+      });
+
+      // Пресеты быстрого шаблона
+      document.getElementById('preset-mvp')?.addEventListener('click', () => scrollToCalculatorAndSelect('bot', true));
+      document.getElementById('preset-landing')?.addEventListener('click', () => scrollToCalculatorAndSelect('landing'));
+      document.getElementById('preset-tma')?.addEventListener('click', () => scrollToCalculatorAndSelect('tma'));
+      document.getElementById('preset-full')?.addEventListener('click', () => {
+        const comboRadio = document.querySelector('input[name="base_type"][value="combo"]');
+        if (comboRadio) comboRadio.checked = true;
+        renderDynamicAddons('combo', false);
+        addonsContainer.querySelectorAll('.calc-addon-input').forEach(cb => cb.checked = true);
+        calculateTotal();
+        document.getElementById('calculator')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      // Инициализация стартовых допов для бота при первой загрузке
+      renderDynamicAddons('bot', false);
+      calculateTotal();
+
+      /* ==========================================================================
+         8. ТЕРМИНАЛ КОДА
+         ========================================================================== */
+      const codeSnippet = document.getElementById('code-content');
+      const tabBot = document.getElementById('tab-bot');
+      const tabDb = document.getElementById('tab-db');
+      const tabTma = document.getElementById('tab-tma');
+      const copyBtn = document.getElementById('copy-code-btn');
+      const copyText = document.getElementById('copy-btn-text');
+
+      const codeSnippets = {
+        bot: `<span class="text-purple-400">from</span> aiogram <span class="text-purple-400">import</span> Bot, Dispatcher, Router, F
+<span class="text-purple-400">from</span> aiogram.filters <span class="text-purple-400">import</span> CommandStart
+<span class="text-purple-400">from</span> aiogram.types <span class="text-purple-400">import</span> Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
+
+router = Router(name=<span class="text-emerald-300">"core_router"</span>)
+
+<span class="text-gray-500"># Нативный запуск TMA с валидацией Telegram initData</span>
+<span class="text-purple-400">@router.message</span>(CommandStart())
+<span class="text-purple-400">async def</span> <span class="text-blue-400">cmd_start</span>(message: Message):
+    app_url = <span class="text-emerald-300">"https://myoec-sys.github.io/"</span>
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(
+            text=<span class="text-emerald-300">"⚡ Открыть Mini App"</span>, 
+            web_app=WebAppInfo(url=app_url)
+        )
+    ]])
+    <span class="text-purple-400">await</span> message.answer(
+        <span class="text-emerald-300">f"Добро пожаловать, &lt;b&gt;{message.from_user.first_name}&lt;/b&gt;! Ядро системы активно."</span>,
+        reply_markup=keyboard,
+        parse_mode=<span class="text-emerald-300">"HTML"</span>
+    )`,
+
+        db: `<span class="text-purple-400">from</span> sqlalchemy.ext.asyncio <span class="text-purple-400">import</span> create_async_engine, async_sessionmaker
+<span class="text-purple-400">from</span> redis.asyncio <span class="text-purple-400">import</span> Redis
+
+<span class="text-gray-500"># Асинхронный пул соединений PostgreSQL + Redis</span>
+engine = create_async_engine(<span class="text-emerald-300">"postgresql+asyncpg://user:pass@localhost/prod_db"</span>, pool_size=<span class="text-orange-400">20</span>)
+session_maker = async_sessionmaker(engine, expire_on_commit=<span class="text-blue-400">False</span>)
+redis_client = Redis.from_url(<span class="text-emerald-300">"redis://localhost:6379/0"</span>, decode_responses=<span class="text-blue-400">True</span>)
+
+<span class="text-purple-400">async def</span> <span class="text-blue-400">cache_user_state</span>(user_id: <span class="text-blue-400">int</span>, payload: <span class="text-blue-400">dict</span>):
+    <span class="text-purple-400">await</span> redis_client.setex(<span class="text-emerald-300">f"user:{user_id}:cache"</span>, <span class="text-orange-400">3600</span>, str(payload))`,
+
+        tma: `<span class="text-purple-400">import</span> { WebApp } <span class="text-purple-400">from</span> <span class="text-emerald-300">'@twa-dev/sdk'</span>;
+
+<span class="text-gray-500">// Инициализация нативного окружения Telegram TMA</span>
+WebApp.ready();
+WebApp.expand();
+WebApp.enableClosingConfirmation();
+
+<span class="text-gray-500">// Тактильный отклик (Haptic Feedback)</span>
+<span class="text-purple-400">export const</span> triggerHaptic = () =&gt; {
+  WebApp.HapticFeedback.impactOccurred(<span class="text-emerald-300">'medium'</span>);
+};`
+      };
+
+      function setTab(activeTab, key) {
+        [tabBot, tabDb, tabTma].forEach(t => {
+          t.className = 'interactive-btn px-3 py-1 rounded-full text-gray-400 hover:text-white transition-colors';
+        });
+        activeTab.className = 'interactive-btn px-3 py-1 rounded-full bg-white/10 text-white font-medium';
+        codeSnippet.innerHTML = codeSnippets[key];
+      }
+
+      tabBot?.addEventListener('click', () => setTab(tabBot, 'bot'));
+      tabDb?.addEventListener('click', () => setTab(tabDb, 'db'));
+      tabTma?.addEventListener('click', () => setTab(tabTma, 'tma'));
+
+      copyBtn?.addEventListener('click', () => {
+        navigator.clipboard.writeText(codeSnippet.innerText).then(() => {
+          copyText.textContent = 'Скопировано!';
+          setTimeout(() => copyText.textContent = 'Скопировать', 2000);
+        });
+      });
+
+      /* ==========================================================================
+         9. МОБИЛЬНОЕ МЕНЮ
+         ========================================================================== */
+      const mobileBtn = document.getElementById('mobile-menu-btn');
+      const mobileMenu = document.getElementById('mobile-menu');
+      const mobileNavLinks = document.querySelectorAll('.mobile-nav-link');
+
+      mobileBtn?.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+      });
+
+      mobileNavLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          mobileMenu.classList.add('hidden');
+        });
+      });
+
+    });
+  </script>
+</body>
+</html>
+```
